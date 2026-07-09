@@ -14,7 +14,7 @@ export function Ability(
   ) => MongoAbility<any> | Promise<MongoAbility<any>>,
 ) {
   return createParamDecorator({
-    value: async action => {
+    value: async (action) => {
       // Get current user
       const authService = getFromContainer(FirebaseAuthService);
       const token = action.request.headers['authorization']?.split(' ')[1];

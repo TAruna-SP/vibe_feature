@@ -197,6 +197,46 @@ export class GenAIService extends BaseService {
     );
   }
 
+  /**
+   * Reshape an arbitrary AI-returned segmentationMap into exactly
+   * `targetSegments` roughly-equal end-time boundaries across the video
+   * duration. Duration is inferred from the AI's existing map (its max
+   * timestamp), falling back to the last transcript-chunk timestamp, and
+   * finally to a safe default of 1800s (30 min) for the mock.
+   */
+  reshapeSegmentationMap(
+    currentMap: number[],
+    targetSegments: number,
+    fallbackDurationSeconds: number = 1800,
+  ): number[] {
+    const safeTarget = Math.max(1, Math.floor(targetSegments));
+
+    // Infer video duration from whatever timestamps we have.
+    let duration = 0;
+    if (Array.isArray(currentMap) && currentMap.length > 0) {
+      const valid = currentMap.filter(
+        v => typeof v === 'number' && Number.isFinite(v) && v > 0,
+      );
+      if (valid.length > 0) {
+        duration = Math.max(...valid);
+      }
+    }
+
+    // As a last resort use the fallback. The mock uses 1800s for non-YouTube
+    // uploads, so this matches what the user already sees today.
+    if (!Number.isFinite(duration) || duration <= 0) {
+      duration = fallbackDurationSeconds;
+    }
+
+    const step = duration / safeTarget;
+    const reshaped: number[] = [];
+    for (let i = 1; i <= safeTarget; i++) {
+      // Round to one decimal place so timestamps stay readable in the UI.
+      reshaped.push(Math.round(step * i * 10) / 10);
+    }
+    return reshaped;
+  }
+
   async approveTaskToStart(
     jobId: string,
     userId: string,
@@ -697,10 +737,30 @@ export class GenAIService extends BaseService {
             break;
           case TaskType.SEGMENTATION:
             job.jobStatus.segmentation = jobData.status;
-            if (taskData.segmentation) {
-              taskData.segmentation.push({ ...(jobData as segmentationData) });
-            } else {
-              taskData.segmentation = [{ ...(jobData as segmentationData) }];
+            {
+              const segPayload = { ...(jobData as segmentationData) };
+              // If the user asked for a target segment count, reshape the
+              // AI's segmentationMap into N equal splits here so all
+              // downstream steps (question generation, upload) see the
+              // forced number of segments.
+              const targetSegments =
+                job.segmentationParameters?.targetSegments;
+              if (
+                typeof targetSegments === 'number' &&
+                targetSegments > 0 &&
+                Array.isArray(segPayload.segmentationMap)
+              ) {
+                segPayload.segmentationMap =
+                  this.reshapeSegmentationMap(
+                    segPayload.segmentationMap,
+                    targetSegments,
+                  );
+              }
+              if (taskData.segmentation) {
+                taskData.segmentation.push(segPayload);
+              } else {
+                taskData.segmentation = [segPayload];
+              }
             }
             break;
           case TaskType.QUESTION_GENERATION:
@@ -768,8 +828,6 @@ export class GenAIService extends BaseService {
         )
       ) {
         jobState.currentTask = TaskType.AUDIO_EXTRACTION;
-        if (job.jobStatus.audioExtraction === TaskStatus.WAITING)
-          jobState.currentTask = null;
         jobState.taskStatus = job.jobStatus.audioExtraction;
         jobState.url = job.url;
       }
@@ -780,8 +838,6 @@ export class GenAIService extends BaseService {
         )
       ) {
         jobState.currentTask = TaskType.TRANSCRIPT_GENERATION;
-        if (job.jobStatus.transcriptGeneration === TaskStatus.WAITING)
-          jobState.currentTask = TaskType.AUDIO_EXTRACTION;
         jobState.taskStatus = job.jobStatus.transcriptGeneration;
         jobState.parameters = job.transcriptParameters;
         if (task.audioExtraction)
@@ -797,8 +853,6 @@ export class GenAIService extends BaseService {
         )
       ) {
         jobState.currentTask = TaskType.SEGMENTATION;
-        if (job.jobStatus.segmentation === TaskStatus.WAITING)
-          jobState.currentTask = TaskType.TRANSCRIPT_GENERATION;
         jobState.taskStatus = job.jobStatus.segmentation;
         jobState.parameters = job.segmentationParameters;
         jobState.file =
@@ -813,8 +867,6 @@ export class GenAIService extends BaseService {
         )
       ) {
         jobState.currentTask = TaskType.QUESTION_GENERATION;
-        if (job.jobStatus.questionGeneration === TaskStatus.WAITING)
-          jobState.currentTask = TaskType.SEGMENTATION;
         jobState.taskStatus = job.jobStatus.questionGeneration;
         jobState.parameters = job.questionGenerationParameters;
         jobState.file =

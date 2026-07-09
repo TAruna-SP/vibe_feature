@@ -6,4 +6,23 @@ packages:
   - cli
   - mcp
   - e2e
-  
+
+# Whitelist packages that are allowed to run install/build scripts.
+# pnpm 10+ refuses to run postinstall scripts by default for
+# security. These are native modules and tooling we genuinely need
+# to compile their .node binaries / download helper assets.
+onlyBuiltDependencies:
+  - bcrypt
+  - mongodb-memory-server
+  - "@parcel/watcher"
+  - sharp
+  - "@tensorflow/tfjs-node"
+  - esbuild
+  - "@sentry/cli"
+  - "@sentry-internal/node-cpu-profiler"
+  - "@swc/core"
+  - core-js
+  - core-js-pure
+  - protobufjs
+  - msw
+  - postman-code-generators

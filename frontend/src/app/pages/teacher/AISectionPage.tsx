@@ -429,6 +429,7 @@ const TaskAccordionInternal = ({
   const segFields = [
     { key: 'lam', type: 'number' },
     { key: 'runs', type: 'number' },
+    { key: 'targetSegments', type: 'number' },
   ];
 
   const handleParamChange = useCallback((
@@ -1463,7 +1464,7 @@ export default function AISectionPage() {
   const [youtubeUrl, setYoutubeUrl] = useState("");
   const [aiJobId, setAiJobId] = useState<string | null>(null);
   const [urlError, setUrlError] = useState<string | null>(null);
-  const [segParams, setSegParams] = useState({ lam: 4.6, runs: 25, noiseId: -1 });
+  const [segParams, setSegParams] = useState({ lam: 4.6, runs: 25, noiseId: -1, targetSegments: 5 });
   const [taskRuns, setTaskRuns] = useState<TaskRuns>({
     transcription: [],
     segmentation: [],
@@ -2045,7 +2046,7 @@ For ANY question where options are "True" and "False":
           const hasFailedOrStoppedRun = taskRuns.segmentation.some(r => r.status === 'failed' || r.status === 'stopped');
           if (hasFailedOrStoppedRun) {
             setTaskRuns(prev => ({ ...prev, [task]: [...prev[task], newRun] }));
-            localParams = { lam: segParams.lam, runs: segParams.runs, noiseId: segParams.noiseId };
+            localParams = { lam: segParams.lam, runs: segParams.runs, noiseId: segParams.noiseId, targetSegments: segParams.targetSegments };
             await aiSectionAPI.approveContinueTask(aiJobId);
             await aiSectionAPI.rerunJobTask(aiJobId, taskType, localParams, 0);
             toast.success("Segmentation restarted.");
@@ -2069,7 +2070,7 @@ For ANY question where options are "True" and "False":
             segmentation: [...prev.segmentation, newRun]
           }));
           // Always use the latest values from segParams for the payload
-          localParams = { lam: segParams.lam, runs: segParams.runs, noiseId: segParams.noiseId };
+          localParams = { lam: segParams.lam, runs: segParams.runs, noiseId: segParams.noiseId, targetSegments: segParams.targetSegments };
           await aiSectionAPI.postJobTask(aiJobId, taskType, localParams, 0);
           setIsLoading(true);
           setProgress(0);

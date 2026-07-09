@@ -12,9 +12,15 @@ export const startCron = () => {
 
     console.log('✅ Delete cron job scheduled successfully');
 
-    deleteCronService.scheduleProgressUpdateCron();
-
-    console.log('✅ Progress update cron job scheduled successfully');
+    // scheduleProgressUpdateCron is async because it eagerly invokes the
+    // bulk update. On a fresh/empty database it throws "Course not found",
+    // which would become an unhandled rejection. Swallow it so the process
+    // stays up.
+    deleteCronService.scheduleProgressUpdateCron()
+      .then(() => console.log('✅ Progress update cron job scheduled successfully'))
+      .catch((err) => {
+        console.warn('⚠️  Progress update cron initial run failed (likely empty DB; will retry on schedule):', err?.message || err);
+      });
 
     // ── Auto-Ejection Engine ──────────────────────────────────────
     const autoEjectionEngine = getFromContainer(AutoEjectionEngine);

@@ -40,9 +40,19 @@ export class MongoDatabase implements IDatabase<Db> {
       return;
     }
 
+    // Mongo connection options. TLS is enabled only for Atlas / mongodb+srv
+    // URIs; local URIs (mongodb://, mongodb-memory-server) must NOT use TLS
+    // or the driver will refuse to connect. NODE_ENV=development also disables
+    // TLS so that the in-memory MongoDB booted by `mongodb-memory-server`
+    // works out of the box.
+    const isLocalUri =
+      uri.startsWith('mongodb://') ||
+      process.env.NODE_ENV === 'development' ||
+      process.env.MONGO_DISABLE_TLS === 'true';
+
     this.client = new MongoClient(uri, {
-      ssl: true,
-      tls: true,
+      ssl: !isLocalUri,
+      tls: !isLocalUri,
       tlsAllowInvalidCertificates: false,
       tlsAllowInvalidHostnames: false,
 

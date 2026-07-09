@@ -24,11 +24,13 @@ export default defineConfig({
   },
   server: {
     proxy: {
-      // Proxy API requests to staging backend to avoid CORS issues
+      // Proxy API requests to local backend to avoid CORS issues.
+      // Override at runtime with VITE_API_TARGET (defaults to 3141
+      // to match backend's APP_PORT).
       '/api': {
-        target: 'http://localhost:4001',
+        target: process.env.VITE_API_TARGET || 'http://localhost:3141',
         changeOrigin: true,
-        secure: true,
+        secure: false,
       },
     },
   },

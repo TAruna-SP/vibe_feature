@@ -39,6 +39,12 @@ export interface SegmentationParameters {
 	lam?: number;
 	runs?: number;
 	noiseId?: number;
+	/**
+	 * Optional. When set, after the AI returns a segmentationMap the backend
+	 * will reshape it into `targetSegments` roughly-equal splits across the
+	 * video duration. Set to 5 (default in the UI) to force 5 segments.
+	 */
+	targetSegments?: number;
 }
 
 export interface QuestionGenerationParameters {

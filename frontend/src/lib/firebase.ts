@@ -33,6 +33,25 @@ const firebaseConfig = {
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
+
+// In dev, route the firebase JS SDK to the local auth emulator so
+// login + signup work without a real Firebase project. Controlled by
+// VITE_USE_FIREBASE_EMULATOR in frontend/.env.
+if (import.meta.env.VITE_USE_FIREBASE_EMULATOR === 'true') {
+  // Lazy import keeps this out of the production bundle.
+  import('firebase/auth').then(({ connectAuthEmulator }) => {
+    try {
+      connectAuthEmulator(auth, 'http://127.0.0.1:9099', {
+        disableWarnings: true,
+      });
+      console.info('[firebase] connected to auth emulator at 127.0.0.1:9099');
+    } catch (err) {
+      // ignore: emulator connection errors are non-fatal (auth still works
+      // against a real Firebase project if config is provided).
+      console.warn('[firebase] could not connect to auth emulator', err);
+    }
+  });
+}
 export const provider = new GoogleAuthProvider();
 
 // Firebase authentication functions
