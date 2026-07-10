@@ -5,6 +5,9 @@ Thumbs.db
 # Ignore database files anywhere in the project
 **/lms_db/
 
+# Ephemeral local mongod data dirs created by backend/scripts/launch-dev.mjs
+backend/.mongo-data/
+
 
 # Ignore credentials folder anywhere
 **/credentials/
