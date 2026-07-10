@@ -210,6 +210,16 @@ export default function AISectionModal({ open, onOpenChange, onSectionUploaded }
         aiJobId,
         taskType,
         (status: JobStatus) => {
+          const taskTypeMap: Record<string, string> = {
+            'AUDIO_EXTRACTION': 'audioExtraction',
+            'TRANSCRIPT_GENERATION': 'transcriptGeneration',
+            'SEGMENTATION': 'segmentation',
+            'QUESTION_GENERATION': 'questionGeneration',
+            'UPLOAD_CONTENT': 'uploadContent'
+          };
+          const statusKey = taskTypeMap[taskType] as keyof NonNullable<JobStatus['jobStatus']>;
+          const currentStatus = status.jobStatus ? status.jobStatus[statusKey] : 'PENDING';
+
           setTaskRuns(prev => ({
             ...prev,
             [task]: prev[task].map(run =>
@@ -217,9 +227,9 @@ export default function AISectionModal({ open, onOpenChange, onSectionUploaded }
                 ? {
                     ...run,
                     status:
-                      status.currentTask?.type === taskType && status.currentTask.status === "COMPLETED"
+                      currentStatus === "COMPLETED"
                         ? "done"
-                        : status.currentTask?.type === taskType && status.currentTask.status === "FAILED"
+                        : currentStatus === "FAILED"
                         ? "failed"
                         : "loading",
                     result: status,

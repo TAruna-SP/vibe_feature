@@ -504,18 +504,29 @@ export const pollForTaskCompletion = async (
   intervalMs = 5000
 ): Promise<JobStatus> => {
   let attempts = 0;
+  
+  const taskTypeMap: Record<string, string> = {
+    'AUDIO_EXTRACTION': 'audioExtraction',
+    'TRANSCRIPT_GENERATION': 'transcriptGeneration',
+    'SEGMENTATION': 'segmentation',
+    'QUESTION_GENERATION': 'questionGeneration',
+    'UPLOAD_CONTENT': 'uploadContent'
+  };
+  
+  const statusKey = taskTypeMap[taskType] as keyof NonNullable<JobStatus['jobStatus']>;
+
   while (attempts < maxAttempts) {
     const status = await getJobStatus(jobId);
     if (onStatusUpdate) onStatusUpdate(status);
-    if (
-      status.currentTask?.type === taskType &&
-      status.currentTask.status === 'COMPLETED'
-    ) {
+    
+    if (status.jobStatus && status.jobStatus[statusKey] === 'COMPLETED') {
       return status;
     }
-    if (status.currentTask?.type === taskType && status.currentTask.status === 'FAILED') {
+    
+    if (status.jobStatus && status.jobStatus[statusKey] === 'FAILED') {
       throw new Error(`Task ${taskType} failed`);
     }
+    
     await new Promise(res => setTimeout(res, intervalMs));
     attempts++;
   }

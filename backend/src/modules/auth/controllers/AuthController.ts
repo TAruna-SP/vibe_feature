@@ -188,9 +188,15 @@ export class AuthController {
       throw new HttpError(500, 'Failed to verify reCAPTCHA. Please try again.');
     }
 
-    // Proceed with Firebase authentication
+    // Proceed with Firebase authentication.
+    // When running against the local Auth Emulator the REST endpoint is hosted
+    // on the emulator, not at identitytoolkit.googleapis.com.
+    const emulatorHost = process.env.FIREBASE_AUTH_EMULATOR_HOST;
+    const signInUrl = emulatorHost
+      ? `http://${emulatorHost}/identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${appConfig.firebase.apiKey}`
+      : `https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${appConfig.firebase.apiKey}`;
     const data = await fetch(
-      `https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${appConfig.firebase.apiKey}`,
+      signInUrl,
       {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
