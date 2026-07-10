@@ -279,15 +279,23 @@ const VideoModal: React.FC<VideoModalProps> = ({
     const formatTimeInput = (value: string): string => {
         const digits = value.replace(/\D/g, '');
 
-        if (digits.length > 4) return value;
+        if (digits.length > 6) return value;
 
         if (digits.length <= 2) {
             return digits;
-        } else {
+        }
+
+        if (digits.length <= 4) {
             const minutes = digits.slice(0, -2);
             const seconds = digits.slice(-2);
             return `${minutes}:${seconds}`;
         }
+
+        // 5-6 digits: H:MM:SS / HH:MM:SS
+        const hours = digits.slice(0, -4);
+        const minutes = digits.slice(-4, -2);
+        const seconds = digits.slice(-2);
+        return `${hours}:${minutes}:${seconds}`;
     };
 
     const validateTimeInput = (value: string, maxSeconds: number): number => {
