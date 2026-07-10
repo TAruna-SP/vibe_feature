@@ -71,13 +71,16 @@ if (mongodCandidates.length === 0) {
 mongodCandidates.sort();
 const mongodBin = mongodCandidates[mongodCandidates.length - 1];
 
-// Pick a free data dir (auto-cleaned between runs). Create inside workspace
-// because the system C: drive has extremely low disk space (only ~22MB free).
+// Use a fixed data dir so course/user data survives backend restarts,
+// instead of a fresh mkdtemp (which wiped everything on every launch).
+// Created inside workspace because the system C: drive has extremely low
+// disk space (only ~22MB free).
 const localMongoTempDir = path.join(backendRoot, '.mongo-data');
-if (!fs.existsSync(localMongoTempDir)) {
-  fs.mkdirSync(localMongoTempDir, { recursive: true });
+const dataDir = path.join(localMongoTempDir, 'vibe-mongo-persistent');
+const isFreshDataDir = !fs.existsSync(dataDir);
+if (isFreshDataDir) {
+  fs.mkdirSync(dataDir, { recursive: true });
 }
-const dataDir = fs.mkdtempSync(path.join(localMongoTempDir, 'vibe-mongo-'));
 const mongoPort = 27017;
 
 // Make sure no stale mongod is squatting on 27017.
@@ -86,7 +89,7 @@ try {
 } catch {}
 
 console.log(`[launch-dev] starting mongod from ${mongodBin}`);
-console.log(`[launch-dev] dataDir=${dataDir} port=${mongoPort}`);
+console.log(`[launch-dev] dataDir=${dataDir} (${isFreshDataDir ? 'fresh' : 'reusing existing data'}) port=${mongoPort}`);
 
 const mongod = spawn(mongodBin, [
   '--dbpath', dataDir,
@@ -221,8 +224,8 @@ const child = spawn(process.execPath, ['--unhandled-rejections=warn', indexJs], 
 });
 child.on('exit', (code) => {
   try { mongod.kill(); } catch {}
-  // Best-effort data dir cleanup
-  try { fs.rmSync(dataDir, { recursive: true, force: true }); } catch {}
+  // dataDir is intentionally kept (not deleted) so course/user data
+  // persists across backend restarts — see dataDir comment above.
   process.exit(code ?? 0);
 });
 
