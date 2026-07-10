@@ -228,7 +228,9 @@ export class WebhookService {
     const durationSeconds = await this.getYoutubeDuration(jobState.url);
     console.log(`[MOCK] Video duration resolved: ${durationSeconds} seconds`);
 
-    const count = 5;
+    const count = jobState.targetSegments && jobState.targetSegments > 0
+      ? Math.floor(jobState.targetSegments)
+      : 5;
     const segmentDuration = durationSeconds / count;
     const segmentMap: number[] = [];
     for (let i = 1; i <= count; i++) {

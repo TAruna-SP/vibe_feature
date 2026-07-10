@@ -169,4 +169,11 @@ export class JobState {
 	parameters?: TranscriptParameters | SegmentationParameters | QuestionGenerationParameters | UploadParameters;
 	file?: string;
 	segmentMap?: Array<number>;
+	/**
+	 * Carried alongside `url` regardless of which task is currently active, so
+	 * the mock WebhookService can honor the job's requested segment count from
+	 * its very first call (AUDIO_EXTRACTION), before the SEGMENTATION phase's
+	 * `parameters` would otherwise make targetSegments visible.
+	 */
+	targetSegments?: number;
 }

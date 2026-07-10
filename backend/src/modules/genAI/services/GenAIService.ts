@@ -821,6 +821,11 @@ export class GenAIService extends BaseService {
         throw new NotFoundError(`Task data for job ID ${jobId} not found`);
       }
       const jobState = new JobState();
+      // Carried unconditionally (not gated by task phase) so the mock
+      // WebhookService can see the requested segment count on its very
+      // first call, before SEGMENTATION's `parameters` would normally
+      // surface targetSegments.
+      jobState.targetSegments = job.segmentationParameters?.targetSegments;
       if (
         !(
           job.jobStatus.audioExtraction === TaskStatus.PENDING ||
