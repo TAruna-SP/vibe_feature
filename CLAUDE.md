@@ -21,9 +21,11 @@ npx firebase emulators:start --only auth  # Firebase Auth Emulator on :9099 (mus
 cd frontend; pnpm dev                      # :5173
 ```
 
-Dev login: `teacher@vibe.dev` / `Teacher123!`, `student@vibe.dev` / `Student123!` (re-seed with `node backend/scripts/seed-dev-users.cjs` if Mongo data is wiped — it wipes on every backend restart since it's an ephemeral in-memory server).
+Dev login: `teacher@vibe.dev` / `Teacher123!`, `student@vibe.dev` / `Student123!` (re-seed with `node backend/scripts/seed-dev-users.cjs` if Mongo data is missing).
 
-In this local-only mode, `WebhookService` mocks the AI pipeline (no real AI server call): submitting a video schedules RUNNING→COMPLETED transitions with ~4s delay per task, producing 5 segments.
+`launch-dev.mjs` runs mongod against a **fixed** data dir (`backend/.mongo-data/vibe-mongo-persistent`), not a fresh `mkdtemp` per launch, so course/user data now survives backend restarts — don't reintroduce per-run temp dirs or delete-on-exit cleanup there. If stray `vibe-mongo-*` sibling dirs ever show up next to `vibe-mongo-persistent`, they're leftover cruft from before this fix and safe to delete.
+
+In this local-only mode, `WebhookService` mocks the AI pipeline (no real AI server call): submitting a video schedules RUNNING→COMPLETED transitions with ~4s delay per task, producing 5 segments by default. Pass `segmentationParameters.targetSegments` on the job body to force a different count (e.g. splitting a long video into N roughly-equal chunks) — this must be honored both by `GenAIService`'s `SEGMENTATION`-task reshaping *and* by the mock's own segment generator in `WebhookService.prepareJobData` (via `JobState.targetSegments`, carried unconditionally regardless of current task phase). If segment count silently reverts to 5, check that it's wired through both places.
 
 ## Commands
 
@@ -65,3 +67,5 @@ React + Vite + TanStack Router (`frontend/src/app/routes/`, split into `student-
 API access is generated, not hand-written: `frontend/src/lib/openapi.ts` builds an `openapi-fetch` client typed from `frontend/src/types/schema.ts` (generated from `openapi.json`, itself generated from the backend — see `pnpm copy`/`pnpm gen-schema` above), wrapped by `openapi-react-query` for typed hooks. Some flows call `fetch` directly against `VITE_BASE_URL` instead (e.g. `frontend/src/lib/genai-api.ts`, the `/auth/login` pre-check in `AuthPage.tsx`) rather than going through the generated client — match the existing pattern in the file you're editing rather than mixing both in one call site.
 
 Auth: Firebase Auth SDK (`frontend/src/lib/firebase.ts`) is the source of truth for the ID token (`firebaseUser.getIdToken()`, stored via the auth store / `localStorage['firebase-auth-token']`); the backend independently verifies Firebase ID tokens on protected routes. `loginWithEmail`/`loginWithGoogle` in `frontend/src/utils/auth.ts` do the actual Firebase sign-in; `AuthPage.tsx`'s `handleEmailLogin` also calls the backend `/auth/login` endpoint first as a pre-check (reCAPTCHA + credential validation) before doing the real Firebase sign-in.
+
+Video segment clip times (`Video-modal.tsx`) round-trip through `H:MM:SS`/`HH:MM:SS` strings (`startTime`/`endTime` on the item, matching the backend's `secondsToTimeString`). `formatTime`/`formatTimeInput` there handle hour-plus durations — don't reintroduce an `MM:SS`-only path (e.g. `seconds % 3600` without an hours component) for either the display formatter or the manual-digit-entry formatter; that previously truncated/misparsed any clip an hour or longer, and for `formatTime` specifically it also corrupted the persisted timestamp on Save, not just the display.
